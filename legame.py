@@ -14,6 +14,28 @@ FRAMES_PER_SECOND = 40
 IMAGE_FOLDER = "images"
 GRAVITY = 1.8
 
+level0 = [
+    (["cdbaedacdbbeacde",
+      "H_______________",
+      "H___________q___",
+      "H_______________",
+      "H______s_______m",
+      "yyzvvyxwzvvwyxzy"],"toto"),
+    (["adeacbeabdedccac",
+      "________________",
+      "________p_______",
+      "___o____________",
+      "_____________g__",
+      "zzyyxwvxyyywywyv"],"toto"),
+    (["abeccdedbadddbee",
+      "________u______H",
+      "_______________H",
+      "_______________H",
+      "___ijl______r__H",
+      "yyzywzvyvxzxyvwy"],"toto")
+]
+
+
 level = [
     (["HHHHHHHHHHHHHHHH",
       "H_______________",
@@ -37,6 +59,28 @@ level = [
 
 COLLIDABLE = {"H": True,
               "_": False,
+              "a": True,
+              "b": True,
+              "c": True,
+              "d": True,
+              "e": True,
+              "g": True,
+              "h": True,
+              "i": True,
+              "j": True,
+              "l": True,
+              "m": True,
+              "o": True,
+              "p": True,
+              "q": True,
+              "r": True,
+              "s": True,
+              "u": True,
+              "v": True,
+              "w": True,
+              "x": True,
+              "y": True,
+              "z": True,
              }
 
 
@@ -73,6 +117,7 @@ class Lulu(pygame.sprite.Sprite):
         self.velocity_y = 0
         self.dx = 0
         self.dy = 0
+        self.cd = 0
     def accelerate(self, dx, dy):
         self.velocity_x += dx
         self.velocity_y += dy
@@ -86,11 +131,16 @@ class Lulu(pygame.sprite.Sprite):
         self.accelerate(sign*0.7,0)
     def jump(self):
         self.state = "flying"
-        self.accelerate(0,8)
+        if self.cd = 0
+            self.accelerate(0,8)
+            self.cd = 30
+    def fall(self):
+        self.state = "flying"
     def move(self, dx, dy):
         self.dx += dx
         self.dy += dy
     def update(self):
+        self.cd -= 1
         self.anim_state += 0.1
         if self.anim_state >= len(self.available_states[self.state])-1:
             self.anim_state = 0
@@ -181,7 +231,7 @@ def main():
 
     clock = pygame.time.Clock()
 
-    collidables, non_collidables = generate_level(level)
+    collidables, non_collidables = generate_level(level0)
     first_plan = pygame.sprite.Group()
     lulu = Lulu()
     lulu.rect.x, lulu.rect.y = 320,512
@@ -207,6 +257,14 @@ def main():
             if collided_sprite is not None:
                 lulu.side_collision(collided_sprite)
         move_universe = lulu.flush_moves()
+        fall_path = lulu.rect.copy()
+        fall_path.move(0,10)
+        toto = pygame.sprite.Sprite()
+        toto.rect = fall_path
+        #fp_sp = list()
+        #fp_sp.append()
+        if pygame.sprite.spritecollideany(toto,collidables) is None:
+            lulu.fall()
 
 
         # Rendering
