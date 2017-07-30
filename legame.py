@@ -51,6 +51,8 @@ class Tile(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
     def update(self, dx):
         self.rect.x += dx
+        if self.rect.x < -64:
+            self.kill()
 
 class Lulu(pygame.sprite.Sprite):
     def __init__(self, collidable=True, default_size=(64,128), name="lulu"):
@@ -93,7 +95,7 @@ class Lulu(pygame.sprite.Sprite):
         if self.anim_state >= len(self.available_states[self.state])-1:
             self.anim_state = 0
         anim_state = math.floor(self.anim_state)
-        print((self.state,self.direction,anim_state,self.anim_state))
+        print((self.state,self.direction,anim_state,self.anim_state,(self.velocity_x,self.velocity_y)))
         image_name = IMAGE_FOLDER + "/" + self.available_states[self.state][self.direction][anim_state]
         self.image = pygame.image.load(image_name)
         self.image = pygame.transform.scale(self.image,(self.default_size))
@@ -102,6 +104,8 @@ class Lulu(pygame.sprite.Sprite):
             self.velocity_x -= (0.1 + self.velocity_x/60)
         if self.velocity_x < 0:
             self.velocity_x += (0.1 - self.velocity_x/60)
+        if abs(self.velocity_x) < 0.06:
+            self.velocity_x = 0
         if self.state == "flying":
             self.velocity_y -= GRAVITY
         self.move(self.velocity_x, -self.velocity_y)
@@ -115,9 +119,9 @@ class Lulu(pygame.sprite.Sprite):
             self.velocity_x = self.velocity_x/3
         if collided_sprite.rect.topleft[1] < self.rect.bottomleft[1] and collided_sprite.rect.bottomleft[1] > self.rect.topleft[1]:
             if collided_sprite.rect.bottomleft[1] > self.rect.bottomleft[1]:
-                self.state = "standing"
                 self.dy = collided_sprite.rect.topleft[1] - self.rect.bottomleft[1]
                 self.velocity_y = 0
+                self.state = "standing"
             else:
                 self.dy = 1
                 self.velocity_y = -1
@@ -127,8 +131,11 @@ class Lulu(pygame.sprite.Sprite):
             move_universe = self.dx
         elif self.rect.x + self.dx < X_SCREEN/4:
             move_universe = self.dx
-        else:
-            self.rect.x += self.dx
+        #else:
+            #self.rect.x += self.dx
+        if self.dx == 0 and self.state =="walking":
+            self.state = "standing"
+        move_universe = self.dx
         self.dx = 0
         self.rect.y += self.dy
         self.dy = 0
@@ -143,9 +150,7 @@ class Lulu(pygame.sprite.Sprite):
                 images = list(filter(regex.search, images))
                 direction_dict[direction] = images
             states[state] = direction_dict
-        return states
-
-
+        return states 
 
 def generate_level(level_map):
     input_width = len(level_map[0][0][0])
@@ -177,8 +182,6 @@ def main():
     clock = pygame.time.Clock()
 
     collidables, non_collidables = generate_level(level)
-    collidables.update(0)
-    non_collidables.update(0)
     first_plan = pygame.sprite.Group()
     lulu = Lulu()
     lulu.rect.x, lulu.rect.y = 320,512
@@ -191,11 +194,10 @@ def main():
         for event in pygame.event.get():
             if not hasattr(event, 'key'): continue
             #TODO: switch with dict
-            #gauche 276 haut 273 bas 274 droite 275
             if event.key == pygame.K_RIGHT:
                 lulu.user_move_x("right")
-            if event.key == pygame.K_LEFT:
-                lulu.user_move_x("left")
+            #if event.key == pygame.K_LEFT:
+                #lulu.user_move_x("left")
             if event.key == pygame.K_UP:
                 lulu.jump()
         first_plan.update()
@@ -205,7 +207,6 @@ def main():
             if collided_sprite is not None:
                 lulu.side_collision(collided_sprite)
         move_universe = lulu.flush_moves()
-
 
 
         # Rendering
