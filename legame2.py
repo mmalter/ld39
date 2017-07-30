@@ -3,6 +3,7 @@
 import os
 import math
 import re
+import itertools
 import pygame, math, sys
 from pygame.locals import *
 
@@ -13,6 +14,12 @@ FRAMES_PER_SECOND = 40
 
 IMAGE_FOLDER = "images"
 GRAVITY = 1.8
+
+images = os.listdir("images")
+regex = re.compile("screen_")
+screens_b_ = list(filter(regex.search, images))
+screens_b = itertools.cycle(screens_b_)
+
 
 level0 = [
     (["cdbaedacdbbeacde",
@@ -79,7 +86,7 @@ level0 = [
       "_______u________",
       "________________",
       "________________",
-      "_______i________",
+      "_______il_______",
       "zzyyxwvxyyywywyv"],[]),
     (["accccbeabdedccac",
       "________________",
@@ -167,6 +174,16 @@ class Tile(pygame.sprite.Sprite):
         #if self.rect.x < -64:
             #self.kill()
 
+class Screen_b(pygame.sprite.Sprite):
+    def __init__(self, file, default_size=(64,128)):
+        pygame.sprite.Sprite.__init__(self)
+        self.default_size = default_size
+        self.image = pygame.image.load(IMAGE_FOLDER + "/" + file)
+        self.image = pygame.transform.scale(self.image,(X_SCREEN,Y_SCREEN))
+        self.rect = self.image.get_rect()
+    def update(self, dx):
+        self.rect.x += dx
+
 class Streum(pygame.sprite.Sprite):
     def __init__(self, character, default_size=(64,128)):
         pygame.sprite.Sprite.__init__(self)
@@ -180,9 +197,10 @@ class Streum(pygame.sprite.Sprite):
         self.rect.x += dx
 
 class Lulu(pygame.sprite.Sprite):
-    def __init__(self, collidables=None, default_size=(64,128), name="lulu"):
+    def __init__(self, collidables=None, background=None, default_size=(64,128), name="lulu"):
         pygame.sprite.Sprite.__init__(self)
         self.collidables = collidables
+        self.background = background
         self.name = name
         self.default_size = default_size
         self.collidable=True
@@ -212,6 +230,7 @@ class Lulu(pygame.sprite.Sprite):
         wedge = self.rect.x - 1*X_SCREEN/2
         if wedge >= 0:
             self.collidables.update(-wedge)
+            self.background.update(-wedge)
             self.rect.x = 1*X_SCREEN/2
     def accelerate(self, dx, dy):
         self.velocity_x += dx
@@ -228,15 +247,14 @@ class Lulu(pygame.sprite.Sprite):
     def jump(self):
         if self.cd < 0:
             self.state = "flying"
-            self.accelerate(0,-15)
-            self.cd = 30
+            self.accelerate(0,-17)
+            self.cd = 25
     def update(self):
         self.cd -=1
         self.anim_state += 0.1
         if self.anim_state >= len(self.available_states[self.state])-1:
             self.anim_state = 0
         anim_state = math.floor(self.anim_state)
-        print((self.state,self.direction,anim_state,self.anim_state,(self.velocity_x,self.velocity_y)))
         image_name = IMAGE_FOLDER + "/" + self.available_states[self.state][self.direction][anim_state]
         self.image = pygame.image.load(image_name)
         self.image = pygame.transform.scale(self.image,(self.default_size))
@@ -266,7 +284,7 @@ class Lulu(pygame.sprite.Sprite):
         if self.velocity_y == 0:
             self.velocity_y =2
         else:
-            self.velocity_y += .45
+            self.velocity_y += .75
         hits = pygame.sprite.spritecollide(self, self.collidables, False)
         if self.rect.y >= 5*Y_SCREEN/6 -self.rect.height and self.velocity_y >= 0:
             self.velocity_y = 0
@@ -292,11 +310,15 @@ def generate_level(level_map):
     default_height = Y_SCREEN/input_height
     collidables = pygame.sprite.Group()
     non_collidables = pygame.sprite.Group()
+    background = pygame.sprite.Group()
     for screen_number in range(len(level_map)):
+        screen_b = Screen_b(next(screens_b))
+        screen_b.rect.x = screen_number*default_width*input_width
+        screen_b.rect.y = 0
+        background.add(screen_b)
         streums = level_map[screen_number][1]
         for streum_t in streums:
             streum = Streum(character=streum_t[0])
-            print(streum_t)
             streum.rect.x = screen_number*default_width*input_width+streum_t[1][0]*default_width
             streum.rect.y = streum_t[1][1]*default_height
             collidables.add(streum)
@@ -311,7 +333,7 @@ def generate_level(level_map):
                 else:
                     non_collidables.add(block)
                     #TODO:check for collision separately x y
-    return (collidables,non_collidables)
+    return (collidables,non_collidables,background)
 
 def main():
     pygame.init()
@@ -323,9 +345,9 @@ def main():
 
     clock = pygame.time.Clock()
 
-    collidables, non_collidables = generate_level(level0)
+    collidables, non_collidables, background = generate_level(level0)
     first_plan = pygame.sprite.Group()
-    lulu = Lulu(collidables=collidables)
+    lulu = Lulu(collidables=collidables, background = background)
     lulu.rect.x, lulu.rect.y = 320,512
     first_plan.add(lulu)
     first_plan.draw(screen)
@@ -336,7 +358,7 @@ def main():
 
     while 1:
         if vision == True:
-            power -= 0.1
+            power -= 0.17
         deltat = clock.tick(FRAMES_PER_SECOND)
         for event in pygame.event.get():
             if not hasattr(event, 'key'): continue
@@ -353,7 +375,7 @@ def main():
                 lulu.jump()
         first_plan.update()
         cd -= 1
-        if power < 0:
+        if power < -2:
             main()
 
 
@@ -362,6 +384,8 @@ def main():
             screen.fill((255,255,255))
             collidables.update(0)
             non_collidables.update(0)
+            background.update(0)
+            background.draw(screen)
             collidables.draw(screen)
             non_collidables.draw(screen)
             first_plan.draw(screen)
@@ -371,6 +395,25 @@ def main():
             screen.fill((0,0,0))
             label = font.render("Vision left :"+str(power),1,(255,255,255))
             screen.blit(label,(20,20))
+        pygame.display.flip()
+
+def welcome():
+    pygame.init()
+    screen = pygame.display.set_mode((X_SCREEN, Y_SCREEN))
+    screen.fill((255,255,255))
+    image = pygame.image.load(IMAGE_FOLDER + "/welcome.png")
+    screen.blit(image,(0,0))
+
+    clock = pygame.time.Clock()
+
+    while 1:
+        deltat = clock.tick(FRAMES_PER_SECOND)
+        for event in pygame.event.get():
+            if not hasattr(event, 'key'): continue
+            #TODO: switch with dict
+            if event.key == pygame.K_SPACE:
+                main()
+
         pygame.display.flip()
 
 def victory():
@@ -399,5 +442,5 @@ def update_universe(move_universe,group_sprites):
     for group_sprite in group_sprites:
         group_sprite.move_universe(move_universe)
 
-main()
+welcome()
 
